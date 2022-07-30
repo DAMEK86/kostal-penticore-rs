@@ -1,0 +1,25 @@
+[package]
+name = "kostal-plenticore-rs"
+version = "0.1.0"
+edition = "2021"
+
+[profile.dev]
+opt-level = 0
+
+[profile.release]
+opt-level = 3       # Optimize for speed.
+lto = true          # Enable Link Time Optimization
+codegen-units = 1   # Reduce number of codegen units to increase optimizations.
+panic = 'abort'     # Abort on panic
+debug = false
+overflow-checks = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+influx_db_client = "0.5.1"
+serde = {version = "1.0.140", features = ["derive"]}
+reqwest = {version = "0.11.11", features = ["json"]}
+tokio = {version = "1.0.0", features = ["full"]}
+rocket = "0.5.0-rc.2"
+base64 = "0.13.0"
