@@ -6,7 +6,8 @@ pub fn health() {}
 #[launch]
 fn rocket() -> _ {
     let figment = rocket::Config::figment()
-        .merge(("port", 8080));
+        .merge(("port", 8080))
+        .merge(("address", "0.0.0.0"));
 
     rocket::custom(figment)
         .mount("/", routes![health])
