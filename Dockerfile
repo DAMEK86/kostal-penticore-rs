@@ -34,6 +34,9 @@ RUN addgroup -g $GID -S $GROUP && adduser -u $UID -S $USER -G $GROUP && \
 COPY --from=builder /home/rust/src/target/x86_64-unknown-linux-musl/release/kostal-plenticore-rs /app
 
 USER $USER
+ENV RUST_LOG=info
+ENV ROCKET_PORT=8080
+ENV ROCKET_ADDRESS=0.0.0.0
 
 # Run the application
 CMD ./kostal-plenticore-rs
