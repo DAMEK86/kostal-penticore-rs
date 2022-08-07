@@ -2,6 +2,7 @@
 extern crate rocket;
 extern crate core;
 use log::info;
+use rocket::{Build, Rocket};
 use serde::Deserialize;
 
 mod client;
@@ -35,6 +36,10 @@ async fn rocket() -> _ {
     let server_final_data = client.get_server_trust().await;
     info!("{:?}", server_final_data);
 
+    serve_rest_service()
+}
+
+fn serve_rest_service() -> Rocket<Build> {
     info!("start serving health endpoint");
     rocket::build().mount("/", routes![health])
 }
@@ -47,7 +52,7 @@ mod tests {
     #[test]
     fn test_health() {
         use rocket::local::blocking::Client;
-        let client = Client::tracked(rocket()).unwrap();
+        let client = Client::tracked(serve_rest_service()).unwrap();
         let resp = client.get("/health").dispatch();
         assert_eq!(resp.status(), Status::Ok);
     }
