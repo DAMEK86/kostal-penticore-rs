@@ -7,10 +7,10 @@ edition = "2021"
 opt-level = 0
 
 [profile.release]
-opt-level = 3       # Optimize for speed.
-lto = true          # Enable Link Time Optimization
-codegen-units = 1   # Reduce number of codegen units to increase optimizations.
-panic = 'abort'     # Abort on panic
+opt-level = 3          # Optimize for speed.
+lto = true             # Enable Link Time Optimization
+codegen-units = 1      # Reduce number of codegen units to increase optimizations.
+panic = 'abort'        # Abort on panic
 debug = false
 overflow-checks = true
 
@@ -18,12 +18,15 @@ overflow-checks = true
 
 [dependencies]
 influx_db_client = "0.5.1"
-serde = {version = "1.0.140", features = ["derive"]}
-reqwest = {version = "0.11.11", features = ["json"]}
-tokio = {version = "1.0.0", features = ["full"]}
+envy = "0.4"
+serde = { version = "1.0.140", features = ["derive"] }
+reqwest = { version = "0.11.11", features = ["json"] }
+tokio = { version = "1.0.0", features = ["full"] }
 rocket = "0.5.0-rc.2"
 base64 = "0.13.0"
-scram = "0.6.0"
 rand = "0.8.5"
 ring = "0.16.20"
+aes-gcm = "0.10.1"
 const_format = "0.2.26"
+log = "0.4.17"
+env_logger = "0.9.0"

@@ -1,16 +1,42 @@
-#[macro_use] extern crate rocket;
+#[macro_use]
+extern crate rocket;
+extern crate core;
+use log::info;
+use serde::Deserialize;
+
+mod client;
+
+#[derive(Deserialize, Debug)]
+struct Configuration {
+    #[serde(default = "default_user")]
+    username: String,
+    password: String,
+    /// Inverter URL
+    /// # Examples
+    /// ```
+    /// http://192.168.178.100
+    /// ```
+    inverter_url: String,
+}
+
+fn default_user() -> String {
+    "user".to_string()
+}
 
 #[rocket::get("/health")]
-pub fn health() {}
+fn health() {}
 
 #[launch]
-fn rocket() -> _ {
-    let figment = rocket::Config::figment()
-        .merge(("port", 8080))
-        .merge(("address", "0.0.0.0"));
+async fn rocket() -> _ {
+    env_logger::init();
+    let cfg = envy::from_env::<Configuration>().unwrap();
 
-    rocket::custom(figment)
-        .mount("/", routes![health])
+    let mut client = client::Client::new(&cfg.inverter_url, &cfg.username, &cfg.password);
+    let server_final_data = client.get_server_trust().await;
+    info!("{:?}", server_final_data);
+
+    info!("start serving health endpoint");
+    rocket::build().mount("/", routes![health])
 }
 
 #[cfg(test)]
