@@ -1,8 +1,10 @@
-use base64;
-use serde::{Deserialize, Serialize};
-use std::fmt::{Debug, Display, Formatter};
 extern crate rand;
+
+use std::num::NonZeroU32;
+use std::{error, fmt};
+
 use aes_gcm::*;
+use base64;
 use const_format::formatcp;
 use log;
 use rand::distributions::{Distribution, Uniform};
@@ -10,7 +12,7 @@ use rand::{rngs::OsRng, Error};
 use ring::digest::{Digest, SHA256_OUTPUT_LEN};
 use ring::hmac;
 use ring::pbkdf2::{self, PBKDF2_HMAC_SHA256 as SHA256};
-use std::num::NonZeroU32;
+use serde::{Deserialize, Serialize};
 
 const NONCE_LENGTH: usize = 12;
 const API_ROUTE: &str = "/api/v1";
@@ -18,6 +20,25 @@ const AUTH_START_EP: &str = formatcp!("{}{}", API_ROUTE, "/auth/start");
 const AUTH_FINISH_EP: &str = formatcp!("{}{}", API_ROUTE, "/auth/finish");
 const AUTH_CREATE_SESSION_EP: &str = formatcp!("{}{}", API_ROUTE, "/auth/create_session");
 const PROCESS_DATA_EP: &str = formatcp!("{}{}", API_ROUTE, "/processdata");
+
+#[derive(Debug)]
+pub struct RequestError {
+    error_msg: String,
+}
+
+impl fmt::Display for RequestError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Request failed: {}", self.error_msg)
+    }
+}
+
+impl error::Error for RequestError {}
+
+impl RequestError {
+    fn new(error_msg: String) -> Self {
+        Self { error_msg }
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct AuthClientFirst {
@@ -88,11 +109,11 @@ pub struct ProcessDataIds {
     #[serde(rename = "moduleid")]
     module_id: String,
     #[serde(rename = "processdataids")]
-    process_data_ids: Vec<String>
+    process_data_ids: Vec<String>,
 }
 
-impl Display for ProcessDataIds {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for ProcessDataIds {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "({}, {:?})", self.module_id, self.process_data_ids)
     }
 }
@@ -102,12 +123,17 @@ pub struct ProcessDataValues {
     #[serde(rename = "moduleid")]
     module_id: String,
     #[serde(rename = "processdata")]
-    process_data: Vec<ProcessDataValue>
+    process_data: Vec<ProcessDataValue>,
 }
 
-impl Display for ProcessDataValues {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}, {:?})", self.module_id, self.process_data)
+impl fmt::Display for ProcessDataValues {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "moduleid: {}, {{\"processdata\": {}}}",
+            self.module_id,
+            serde_json::to_string(&self.process_data).unwrap()
+        )
     }
 }
 
@@ -131,7 +157,7 @@ impl<'a> Client<'a> {
             client_key: None,
             stored_key: None,
             server_signature: None,
-            session_id: ""
+            session_id: "",
         }
     }
 
@@ -348,19 +374,45 @@ impl<'a> Client<'a> {
         salted_password
     }
 
-    pub async fn get_process_data(&self) -> Result<Vec<ProcessDataIds>, reqwest::Error> {
-        let resp = reqwest::Client::new()
+    pub async fn get_process_data(&self) -> Result<Vec<ProcessDataIds>, RequestError> {
+        reqwest::Client::new()
             .get(format!("{}{}", self.base_address, PROCESS_DATA_EP))
             .header("authorization", format!("Session {}", self.session_id))
-            .send().await?;
-        resp.json::<Vec<ProcessDataIds>>().await
+            .send()
+            .await
+            .map_err(|e| {
+                error!("Failed to request process_data: {}", e.to_string());
+                RequestError::new(e.to_string())
+            })?
+            .json::<Vec<ProcessDataIds>>()
+            .await
+            .map_err(|e| {
+                error!("Failed to parse process_data response: {}", e.to_string());
+                RequestError::new(e.to_string())
+            })
     }
 
-    pub async fn get_process_data_module(&self, module_id: &str) -> Result<Vec<ProcessDataValues>, reqwest::Error> {
-        let resp = reqwest::Client::new()
-            .get(format!("{}{}/{}", self.base_address, PROCESS_DATA_EP, module_id))
+    pub async fn get_process_data_module(
+        &self,
+        module_id: &str,
+    ) -> Result<Vec<ProcessDataValues>, RequestError> {
+        reqwest::Client::new()
+            .get(format!(
+                "{}{}/{}",
+                self.base_address, PROCESS_DATA_EP, module_id
+            ))
             .header("authorization", format!("Session {}", self.session_id))
-            .send().await?;
-        resp.json::<Vec<ProcessDataValues>>().await
+            .send()
+            .await
+            .map_err(|e| {
+                error!("Failed to request process_data: {}", e.to_string());
+                RequestError::new(e.to_string())
+            })?
+            .json::<Vec<ProcessDataValues>>()
+            .await
+            .map_err(|e| {
+                error!("Failed to parse process_data response: {}", e.to_string());
+                RequestError::new(e.to_string())
+            })
     }
 }
