@@ -2,36 +2,14 @@
 extern crate rocket;
 extern crate core;
 
+use std::process::exit;
 use log::info;
 use rocket::{Build, Rocket};
-use serde::Deserialize;
 use std::thread::sleep;
 use std::time::Duration;
 
 mod client;
-
-#[derive(Deserialize, Debug)]
-struct Configuration {
-    #[serde(default = "default_user")]
-    username: String,
-    password: String,
-    /// Inverter URL
-    /// # Examples
-    /// ```
-    /// http://192.168.178.100
-    /// ```
-    inverter_url: String,
-    #[serde(default = "default_interval")]
-    polling_interval_sec: u64,
-}
-
-fn default_user() -> String {
-    "user".to_string()
-}
-
-fn default_interval() -> u64 {
-    5
-}
+mod cfg;
 
 #[rocket::get("/health")]
 fn health() {}
@@ -39,10 +17,16 @@ fn health() {}
 #[launch]
 async fn rocket() -> _ {
     env_logger::init();
-    let cfg = envy::from_env::<Configuration>().unwrap();
+    let cfg = match cfg::Settings::new() {
+        Ok(cfg) => cfg,
+        Err(error) => {
+            eprintln!("can not load config: {error}");
+            exit(1)
+        }
+    };
 
     let _collector = tokio::spawn(async move {
-        let mut client = client::Client::new(&cfg.inverter_url, &cfg.username, &cfg.password);
+        let mut client = client::Client::new(&cfg.inverter);
         let server_final_data = client.get_server_trust().await.unwrap();
         info!("{:?}", server_final_data);
         client.set_session_id(&server_final_data);
