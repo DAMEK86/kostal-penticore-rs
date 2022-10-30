@@ -2,11 +2,11 @@
 extern crate rocket;
 extern crate core;
 
-use std::thread::sleep;
-use std::time::Duration;
 use log::info;
 use rocket::{Build, Rocket};
 use serde::Deserialize;
+use std::thread::sleep;
+use std::time::Duration;
 
 mod client;
 
@@ -22,7 +22,7 @@ struct Configuration {
     /// ```
     inverter_url: String,
     #[serde(default = "default_interval")]
-    polling_interval_sec: u64
+    polling_interval_sec: u64,
 }
 
 fn default_user() -> String {
@@ -47,12 +47,22 @@ async fn rocket() -> _ {
         info!("{:?}", server_final_data);
         client.set_session_id(&server_final_data);
         loop {
-            let res = client.get_process_data_module("scb:statistic:EnergyFlow").await.unwrap();
-            if res.len() != 0 {
-                for data in res.iter() {
-                    info!("{}", data);
+            match client
+                .get_process_data_module("scb:statistic:EnergyFlow")
+                .await
+            {
+                Ok(res) => {
+                    if res.len() != 0 {
+                        for data in res.iter() {
+                            info!("{}", data);
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("{}", e)
                 }
             }
+
             sleep(Duration::from_secs(cfg.polling_interval_sec))
         }
     });
