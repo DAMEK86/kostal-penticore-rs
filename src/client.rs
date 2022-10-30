@@ -139,10 +139,7 @@ impl fmt::Display for ProcessDataValues {
 }
 
 pub struct Client<'a> {
-    base_address: &'a str,
-    user: &'a str,
-    password: &'a str,
-
+    cfg: &'a crate::cfg::Inverter,
     client_key: Option<hmac::Tag>,
     stored_key: Option<Digest>,
     server_signature: Option<hmac::Tag>,
@@ -150,11 +147,9 @@ pub struct Client<'a> {
 }
 
 impl<'a> Client<'a> {
-    pub fn new(base_address: &'a str, user: &'a str, password: &'a str) -> Self {
+    pub fn new(cfg: &'a crate::cfg::Inverter) -> Self {
         Self {
-            base_address,
-            user,
-            password,
+            cfg,
             client_key: None,
             stored_key: None,
             server_signature: None,
@@ -175,7 +170,7 @@ impl<'a> Client<'a> {
 
         let auth_message = format!(
             "n={},r={},r={},s={},i={},c=biws,r={}",
-            self.user,
+            self.cfg.username,
             client_first_data.nonce,
             server_first_data.nonce,
             server_first_data.salt,
@@ -286,7 +281,7 @@ impl<'a> Client<'a> {
         auth_client_final_data: &&AuthClientFinal,
     ) -> Result<AuthServerFinal, Error> {
         let resp = reqwest::Client::new()
-            .post(format!("{}{}", self.base_address, AUTH_FINISH_EP))
+            .post(format!("{}{}", self.cfg.url, AUTH_FINISH_EP))
             .json(&auth_client_final_data)
             .send()
             .await;
@@ -306,7 +301,7 @@ impl<'a> Client<'a> {
         data: &AuthClientFirst,
     ) -> Result<AuthServerFirst, Error> {
         let resp = reqwest::Client::new()
-            .post(format!("{}{}", self.base_address, AUTH_START_EP))
+            .post(format!("{}{}", self.cfg.url, AUTH_START_EP))
             .json(&data)
             .send()
             .await;
@@ -326,7 +321,7 @@ impl<'a> Client<'a> {
         data: &AuthCreateSessionRequest,
     ) -> Result<AuthCreateSessionResponse, Error> {
         let resp = reqwest::Client::new()
-            .post(format!("{}{}", self.base_address, AUTH_CREATE_SESSION_EP))
+            .post(format!("{}{}", self.cfg.url, AUTH_CREATE_SESSION_EP))
             .json(&data)
             .send()
             .await;
@@ -355,7 +350,7 @@ impl<'a> Client<'a> {
             Ok(salt) => salt,
             Err(error) => return Err(Error::new(error)),
         };
-        Ok(self.hash_password(self.password, rounds, &decoded_salt))
+        Ok(self.hash_password(&self.cfg.password, rounds, &decoded_salt))
     }
 
     fn hash_password(
@@ -376,7 +371,7 @@ impl<'a> Client<'a> {
     }
 
     pub async fn get_process_data(&self) -> Result<Vec<ProcessDataIds>, RequestError> {
-        let url = format!("{}{}", self.base_address, PROCESS_DATA_EP);
+        let url = format!("{}{}", self.cfg.url, PROCESS_DATA_EP);
         self.get::<Vec<ProcessDataIds>>(url).await
     }
 
@@ -386,7 +381,7 @@ impl<'a> Client<'a> {
     ) -> Result<Vec<ProcessDataValues>, RequestError> {
         let url = format!(
             "{}{}/{}",
-            self.base_address, PROCESS_DATA_EP, module_id);
+            self.cfg.url, PROCESS_DATA_EP, module_id);
         self.get::<Vec<ProcessDataValues>>(url).await
     }
 

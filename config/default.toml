@@ -1,0 +1,12 @@
+polling_interval_sec = 5
+
+[inverter]
+username = "user"
+password = ""
+url = "http://your-inverter-ip"
+
+[influx]
+url = "http://your-influxdb.com"
+db = "influx-db"
+user = "root"
+password = ""
