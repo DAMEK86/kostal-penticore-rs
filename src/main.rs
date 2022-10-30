@@ -1,6 +1,9 @@
 #[macro_use]
 extern crate rocket;
 extern crate core;
+
+use std::thread::sleep;
+use std::time::Duration;
 use log::info;
 use rocket::{Build, Rocket};
 use serde::Deserialize;
@@ -18,10 +21,16 @@ struct Configuration {
     /// http://192.168.178.100
     /// ```
     inverter_url: String,
+    #[serde(default = "default_interval")]
+    polling_interval_sec: u64
 }
 
 fn default_user() -> String {
     "user".to_string()
+}
+
+fn default_interval() -> u64 {
+    5
 }
 
 #[rocket::get("/health")]
@@ -32,9 +41,21 @@ async fn rocket() -> _ {
     env_logger::init();
     let cfg = envy::from_env::<Configuration>().unwrap();
 
-    let mut client = client::Client::new(&cfg.inverter_url, &cfg.username, &cfg.password);
-    let server_final_data = client.get_server_trust().await;
-    info!("{:?}", server_final_data);
+    let _collector = tokio::spawn(async move {
+        let mut client = client::Client::new(&cfg.inverter_url, &cfg.username, &cfg.password);
+        let server_final_data = client.get_server_trust().await.unwrap();
+        info!("{:?}", server_final_data);
+        client.set_session_id(&server_final_data);
+        loop {
+            let res = client.get_process_data_module("scb:statistic:EnergyFlow").await.unwrap();
+            if res.len() != 0 {
+                for data in res.iter() {
+                    info!("{}", data);
+                }
+            }
+            sleep(Duration::from_secs(cfg.polling_interval_sec))
+        }
+    });
 
     serve_rest_service()
 }
