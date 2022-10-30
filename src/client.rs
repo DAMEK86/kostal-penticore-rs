@@ -1,6 +1,6 @@
 use base64;
 use serde::{Deserialize, Serialize};
-use std::fmt::Debug;
+use std::fmt::{Debug, Display, Formatter};
 extern crate rand;
 use aes_gcm::*;
 use const_format::formatcp;
@@ -17,6 +17,7 @@ const API_ROUTE: &str = "/api/v1";
 const AUTH_START_EP: &str = formatcp!("{}{}", API_ROUTE, "/auth/start");
 const AUTH_FINISH_EP: &str = formatcp!("{}{}", API_ROUTE, "/auth/finish");
 const AUTH_CREATE_SESSION_EP: &str = formatcp!("{}{}", API_ROUTE, "/auth/create_session");
+const PROCESS_DATA_EP: &str = formatcp!("{}{}", API_ROUTE, "/processdata");
 
 #[derive(Debug, Serialize, Deserialize)]
 struct AuthClientFirst {
@@ -75,6 +76,41 @@ struct AuthCreateSessionResponse {
     session_id: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ProcessDataValue {
+    unit: String,
+    id: String,
+    value: f32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ProcessDataIds {
+    #[serde(rename = "moduleid")]
+    module_id: String,
+    #[serde(rename = "processdataids")]
+    process_data_ids: Vec<String>
+}
+
+impl Display for ProcessDataIds {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {:?})", self.module_id, self.process_data_ids)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ProcessDataValues {
+    #[serde(rename = "moduleid")]
+    module_id: String,
+    #[serde(rename = "processdata")]
+    process_data: Vec<ProcessDataValue>
+}
+
+impl Display for ProcessDataValues {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}, {:?})", self.module_id, self.process_data)
+    }
+}
+
 pub struct Client<'a> {
     base_address: &'a str,
     user: &'a str,
@@ -83,6 +119,7 @@ pub struct Client<'a> {
     client_key: Option<hmac::Tag>,
     stored_key: Option<Digest>,
     server_signature: Option<hmac::Tag>,
+    session_id: &'a str,
 }
 
 impl<'a> Client<'a> {
@@ -94,6 +131,7 @@ impl<'a> Client<'a> {
             client_key: None,
             stored_key: None,
             server_signature: None,
+            session_id: ""
         }
     }
 
@@ -159,6 +197,10 @@ impl<'a> Client<'a> {
         let session_response = self.send_session_request(e).await?;
         log::debug!("{:#?}", session_response);
         Ok(session_response.session_id)
+    }
+
+    pub fn set_session_id(&mut self, session_id: &'a str) -> () {
+        self.session_id = session_id;
     }
 
     fn verify_server_signature(&mut self, server_final_data: &AuthServerFinal) {
@@ -304,5 +346,21 @@ impl<'a> Client<'a> {
             &mut salted_password,
         );
         salted_password
+    }
+
+    pub async fn get_process_data(&self) -> Result<Vec<ProcessDataIds>, reqwest::Error> {
+        let resp = reqwest::Client::new()
+            .get(format!("{}{}", self.base_address, PROCESS_DATA_EP))
+            .header("authorization", format!("Session {}", self.session_id))
+            .send().await?;
+        resp.json::<Vec<ProcessDataIds>>().await
+    }
+
+    pub async fn get_process_data_module(&self, module_id: &str) -> Result<Vec<ProcessDataValues>, reqwest::Error> {
+        let resp = reqwest::Client::new()
+            .get(format!("{}{}/{}", self.base_address, PROCESS_DATA_EP, module_id))
+            .header("authorization", format!("Session {}", self.session_id))
+            .send().await?;
+        resp.json::<Vec<ProcessDataValues>>().await
     }
 }
