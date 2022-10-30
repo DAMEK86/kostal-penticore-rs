@@ -13,6 +13,7 @@ use ring::digest::{Digest, SHA256_OUTPUT_LEN};
 use ring::hmac;
 use ring::pbkdf2::{self, PBKDF2_HMAC_SHA256 as SHA256};
 use serde::{Deserialize, Serialize};
+use serde::de::DeserializeOwned;
 
 const NONCE_LENGTH: usize = 12;
 const API_ROUTE: &str = "/api/v1";
@@ -375,43 +376,37 @@ impl<'a> Client<'a> {
     }
 
     pub async fn get_process_data(&self) -> Result<Vec<ProcessDataIds>, RequestError> {
-        reqwest::Client::new()
-            .get(format!("{}{}", self.base_address, PROCESS_DATA_EP))
-            .header("authorization", format!("Session {}", self.session_id))
-            .send()
-            .await
-            .map_err(|e| {
-                error!("Failed to request process_data: {}", e.to_string());
-                RequestError::new(e.to_string())
-            })?
-            .json::<Vec<ProcessDataIds>>()
-            .await
-            .map_err(|e| {
-                error!("Failed to parse process_data response: {}", e.to_string());
-                RequestError::new(e.to_string())
-            })
+        let url = format!("{}{}", self.base_address, PROCESS_DATA_EP);
+        self.get::<Vec<ProcessDataIds>>(url).await
     }
 
     pub async fn get_process_data_module(
         &self,
         module_id: &str,
     ) -> Result<Vec<ProcessDataValues>, RequestError> {
+        let url = format!(
+            "{}{}/{}",
+            self.base_address, PROCESS_DATA_EP, module_id);
+        self.get::<Vec<ProcessDataValues>>(url).await
+    }
+
+    async fn get<T: DeserializeOwned>(
+        &self,
+        url: String
+    ) -> Result<T, RequestError> {
         reqwest::Client::new()
-            .get(format!(
-                "{}{}/{}",
-                self.base_address, PROCESS_DATA_EP, module_id
-            ))
+            .get(url)
             .header("authorization", format!("Session {}", self.session_id))
             .send()
             .await
             .map_err(|e| {
-                error!("Failed to request process_data: {}", e.to_string());
+                error!("Failed to request endpoint: {}", e.to_string());
                 RequestError::new(e.to_string())
             })?
-            .json::<Vec<ProcessDataValues>>()
+            .json::<T>()
             .await
             .map_err(|e| {
-                error!("Failed to parse process_data response: {}", e.to_string());
+                error!("Failed to parse response: {}", e.to_string());
                 RequestError::new(e.to_string())
             })
     }
