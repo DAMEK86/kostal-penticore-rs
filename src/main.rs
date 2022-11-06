@@ -1,12 +1,13 @@
+extern crate core;
 #[macro_use]
 extern crate rocket;
-extern crate core;
 
 use std::process::exit;
-use log::info;
-use rocket::{Build, Rocket};
 use std::thread::sleep;
 use std::time::Duration;
+
+use log::info;
+use rocket::{Build, Rocket};
 
 mod client;
 mod cfg;
@@ -20,7 +21,7 @@ async fn rocket() -> _ {
     let cfg = match cfg::Settings::new() {
         Ok(cfg) => cfg,
         Err(error) => {
-            eprintln!("can not load config: {error}");
+            error!("can not load config: {error}");
             exit(1)
         }
     };
@@ -61,8 +62,9 @@ fn serve_rest_service() -> Rocket<Build> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rocket::http::Status;
+
+    use super::*;
 
     #[test]
     fn test_health() {

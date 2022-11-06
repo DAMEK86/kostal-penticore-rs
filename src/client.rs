@@ -1,14 +1,14 @@
 extern crate rand;
 
-use std::num::NonZeroU32;
 use std::{error, fmt};
+use std::num::NonZeroU32;
 
 use aes_gcm::*;
 use base64;
 use const_format::formatcp;
 use log;
+use rand::{Error, rngs::OsRng};
 use rand::distributions::{Distribution, Uniform};
-use rand::{rngs::OsRng, Error};
 use ring::digest::{Digest, SHA256_OUTPUT_LEN};
 use ring::hmac;
 use ring::pbkdf2::{self, PBKDF2_HMAC_SHA256 as SHA256};
@@ -387,7 +387,7 @@ impl<'a> Client<'a> {
 
     async fn get<T: DeserializeOwned>(
         &self,
-        url: String
+        url: String,
     ) -> Result<T, RequestError> {
         reqwest::Client::new()
             .get(url)

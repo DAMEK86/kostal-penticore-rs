@@ -1,5 +1,5 @@
-use serde::Deserialize;
 use config::{Config, ConfigError, Environment, File};
+use serde::Deserialize;
 
 const DEFAULT_CONFIG_FILE_PATH: &str = "config/default.toml";
 const CONFIG_FILE_PREFIX: &str = "config/";
@@ -9,7 +9,7 @@ pub struct InfluxDB {
     pub url: String,
     pub db: String,
     pub user: String,
-    pub password: String
+    pub password: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -46,5 +46,5 @@ impl Settings {
             .add_source(Environment::with_prefix("app"))
             .build()?;
         s.try_deserialize()
-}
+    }
 }
