@@ -20,7 +20,6 @@ pub async fn write_data(client: &Client, process_values: &Vec<ProcessDataValues>
         for data in &values.process_data {
             let entry = format!("{}:{} {}", data.id, data.value, data.unit);
             point = point.add_field(data.id.as_str(), data.value as f64);
-            info!("{}", entry);
         }
     }
     client
