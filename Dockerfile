@@ -1,6 +1,8 @@
 ################
 ##### Builder
-FROM ekidd/rust-musl-builder as builder
+FROM rust:1.69-bookworm as builder
+
+WORKDIR /app
 
 ADD --chown=rust:rust ./Cargo.toml ./
 
@@ -13,25 +15,29 @@ RUN cargo build --release
 
 ################
 ##### Runtime
-FROM alpine:3 AS runtime
+FROM debian:bookworm-slim AS runtime
 
 ARG UID=1001
 ARG USER=app
 ARG GID=1001
-ARG GROUP=app
 ENV WORKINGDIR /app
 
 EXPOSE 8080
 
-RUN apk --no-cache add ca-certificates
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends adduser openssl && \
+    apt-get purge -y --autoremove && \
+    apt-get clean -qy && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR $WORKINGDIR
-RUN addgroup -g $GID -S $GROUP && adduser -u $UID -S $USER -G $GROUP && \
+RUN addgroup --gid $GID $USER && \
+    adduser --uid $UID --gid $GID $USER && \
     mkdir -p /app &&\
     chown -R $USER:$GROUP /app
 
 # Copy application binary from builder image
-COPY --from=builder /home/rust/src/target/x86_64-unknown-linux-musl/release/kostal-plenticore-rs /app
+COPY --from=builder /app/target/release/kostal-plenticore-rs /app
 
 USER $USER
 ENV RUST_LOG=info
