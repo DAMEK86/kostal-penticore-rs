@@ -100,9 +100,9 @@ struct AuthCreateSessionResponse {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProcessDataValue {
-    unit: String,
-    id: String,
-    value: f32,
+    pub unit: String,
+    pub id: String,
+    pub value: f32,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -122,9 +122,9 @@ impl fmt::Display for ProcessDataIds {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProcessDataValues {
     #[serde(rename = "moduleid")]
-    module_id: String,
+    pub module_id: String,
     #[serde(rename = "processdata")]
-    process_data: Vec<ProcessDataValue>,
+    pub process_data: Vec<ProcessDataValue>,
 }
 
 impl fmt::Display for ProcessDataValues {

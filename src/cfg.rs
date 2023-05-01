@@ -7,6 +7,7 @@ const CONFIG_FILE_PREFIX: &str = "config/";
 #[derive(Debug, Deserialize)]
 pub struct InfluxDB {
     pub url: String,
+    pub port: String,
     pub db: String,
     pub user: String,
     pub password: String,
