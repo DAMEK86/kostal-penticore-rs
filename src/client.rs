@@ -4,9 +4,8 @@ use std::{error, fmt};
 use std::num::NonZeroU32;
 
 use aes_gcm::*;
-use base64;
+use base64::{engine::general_purpose, Engine as _};
 use const_format::formatcp;
-use log;
 use rand::{Error, rngs::OsRng};
 use rand::distributions::{Distribution, Uniform};
 use ring::digest::{Digest, SHA256_OUTPUT_LEN};
@@ -162,7 +161,7 @@ impl<'a> Client<'a> {
         let nonce = Self::generate_nonce();
         let client_first_data = AuthClientFirst {
             username: "user".to_string(),
-            nonce: base64::encode(nonce).into(),
+            nonce: general_purpose::STANDARD.encode(nonce),
         };
         log::debug!("{:#?}", client_first_data);
         let server_first_data = self.send_client_start_msg(&client_first_data).await?;
@@ -182,7 +181,7 @@ impl<'a> Client<'a> {
 
         let client_final_data = &AuthClientFinal {
             transaction_id: server_first_data.transaction_id.clone(),
-            proof: base64::encode(client_proof).into(),
+            proof: general_purpose::STANDARD.encode(client_proof),
         };
 
         let server_final_data = self.send_client_final_msg(&client_final_data).await?;
@@ -200,7 +199,7 @@ impl<'a> Client<'a> {
         let protocol_key = signature_context.sign();
 
         let key = GenericArray::from_slice(protocol_key.as_ref());
-        let cipher = Aes256Gcm::new(&key);
+        let cipher = Aes256Gcm::new(key);
         let iv_nonce: [u8; 12] = rand::random();
         let nonce = GenericArray::from_slice(&iv_nonce); // 96-bits; unique per message
         let ciphertext = cipher
@@ -210,9 +209,9 @@ impl<'a> Client<'a> {
 
         let e = &AuthCreateSessionRequest {
             transaction_id: server_first_data.transaction_id.clone(),
-            iv: base64::encode(iv_nonce),
-            tag: base64::encode(tag),
-            payload: base64::encode(ct),
+            iv: general_purpose::STANDARD.encode(iv_nonce),
+            tag: general_purpose::STANDARD.encode(tag),
+            payload: general_purpose::STANDARD.encode(ct),
         };
 
         log::debug!("{:#?}", e);
@@ -221,12 +220,12 @@ impl<'a> Client<'a> {
         Ok(session_response.session_id)
     }
 
-    pub fn set_session_id(&mut self, session_id: &'a str) -> () {
+    pub fn set_session_id(&mut self, session_id: &'a str) {
         self.session_id = session_id;
     }
 
     fn verify_server_signature(&mut self, server_final_data: &AuthServerFinal) {
-        let decoded_server_signature = base64::decode(server_final_data.signature.clone())
+        let decoded_server_signature = general_purpose::STANDARD.decode(server_final_data.signature.clone())
             .expect("Server signature must be decoded to verify integrity.");
         assert_eq!(
             decoded_server_signature,
@@ -345,7 +344,7 @@ impl<'a> Client<'a> {
     }
 
     fn salt_password(&self, salt: &String, rounds: NonZeroU32) -> Result<[u8; 32], Error> {
-        let decoded_salt = base64::decode(salt);
+        let decoded_salt = general_purpose::STANDARD.decode(salt);
         let decoded_salt = match decoded_salt {
             Ok(salt) => salt,
             Err(error) => return Err(Error::new(error)),
@@ -368,11 +367,6 @@ impl<'a> Client<'a> {
             &mut salted_password,
         );
         salted_password
-    }
-
-    pub async fn get_process_data(&self) -> Result<Vec<ProcessDataIds>, RequestError> {
-        let url = format!("{}{}", self.cfg.url, PROCESS_DATA_EP);
-        self.get::<Vec<ProcessDataIds>>(url).await
     }
 
     pub async fn get_process_data_module(

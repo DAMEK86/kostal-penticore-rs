@@ -1,9 +1,6 @@
-use std::thread::sleep;
-use std::time::Duration;
-use influx_db_client::{Client, Point, point, Points, Precision, Value};
-use log::log;
+use influx_db_client::{Client, Point, point, Precision};
+use log::info;
 use crate::client::ProcessDataValues;
-use serde::Deserialize;
 
 pub fn get_infux_db_client(cfg: &crate::cfg::InfluxDB) -> Result<Client, Box<dyn std::error::Error>> {
     let client = Client::new(
@@ -14,17 +11,20 @@ pub fn get_infux_db_client(cfg: &crate::cfg::InfluxDB) -> Result<Client, Box<dyn
     Ok(client)
 }
 
-pub async fn write_data(client: &Client, process_values: &Vec<ProcessDataValues>) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn write_data(client: &Client, process_values: &[ProcessDataValues]) -> Result<(), Box<dyn std::error::Error>> {
     let mut point = point!("pvwr");
     for values in process_values.iter() {
         for data in &values.process_data {
-            let entry = format!("{}:{} {}", data.id, data.value, data.unit);
             point = point.add_field(data.id.as_str(), data.value as f64);
         }
     }
-    client
+    let field_count = point.fields.len();
+    if !point.fields.is_empty() {
+        client
         .write_point(point, Some(Precision::Seconds), None)
         .await?;
+    }
+    info!("fields written: {}", field_count);
 
     Ok(())
 }
