@@ -7,9 +7,9 @@ use std::process::exit;
 use std::thread::sleep;
 use std::time::Duration;
 
-mod client;
 mod app;
 mod cfg;
+mod client;
 
 #[rocket::get("/health")]
 fn health() {}
@@ -33,14 +33,21 @@ async fn rocket() -> _ {
         info!("{:?}", server_final_data);
         client.set_session_id(&server_final_data);
         loop {
-            let mut data = client.get_process_data_module("scb:statistic:EnergyFlow").await.unwrap();
-            let dev_local = client.get_process_data_module("devices:local").await.unwrap();
+            let mut data = client
+                .get_process_data_module("scb:statistic:EnergyFlow")
+                .await
+                .unwrap();
+            let dev_local = client
+                .get_process_data_module("devices:local")
+                .await
+                .unwrap();
             data.extend(dev_local);
             let _ = app::write_data(&influx_client, &data).await;
 
             sleep(Duration::from_secs(cfg.polling_interval_sec))
         }
-    }).await;
+    })
+    .await;
 
     serve_rest_service()
 }

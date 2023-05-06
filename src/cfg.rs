@@ -1,5 +1,6 @@
 use config::{Config, ConfigError, Environment, File};
 use serde::Deserialize;
+use crate::client::InverterCfg;
 
 const DEFAULT_CONFIG_FILE_PATH: &str = "config/default.toml";
 const CONFIG_FILE_PREFIX: &str = "config/";
@@ -14,22 +15,10 @@ pub struct InfluxDB {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Inverter {
-    pub username: String,
-    pub password: String,
-    /// Inverter URL
-    /// # Examples
-    /// ```
-    /// http://192.168.178.100
-    /// ```
-    pub url: String,
-}
-
-#[derive(Debug, Deserialize)]
 #[allow(unused)]
 pub struct Settings {
     pub influx: InfluxDB,
-    pub inverter: Inverter,
+    pub inverter: InverterCfg,
     pub polling_interval_sec: u64,
 }
 

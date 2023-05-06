@@ -1,18 +1,18 @@
 extern crate rand;
 
-use std::{error, fmt};
 use std::num::NonZeroU32;
+use std::{error, fmt};
 
 use aes_gcm::*;
 use base64::{engine::general_purpose, Engine as _};
 use const_format::formatcp;
-use rand::{Error, rngs::OsRng};
 use rand::distributions::{Distribution, Uniform};
+use rand::{rngs::OsRng, Error};
 use ring::digest::{Digest, SHA256_OUTPUT_LEN};
 use ring::hmac;
 use ring::pbkdf2::{self, PBKDF2_HMAC_SHA256 as SHA256};
-use serde::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 
 const NONCE_LENGTH: usize = 12;
 const API_ROUTE: &str = "/api/v1";
@@ -20,6 +20,18 @@ const AUTH_START_EP: &str = formatcp!("{}{}", API_ROUTE, "/auth/start");
 const AUTH_FINISH_EP: &str = formatcp!("{}{}", API_ROUTE, "/auth/finish");
 const AUTH_CREATE_SESSION_EP: &str = formatcp!("{}{}", API_ROUTE, "/auth/create_session");
 const PROCESS_DATA_EP: &str = formatcp!("{}{}", API_ROUTE, "/processdata");
+
+#[derive(Debug, Deserialize)]
+pub struct InverterCfg {
+    pub username: String,
+    pub password: String,
+    /// Inverter URL
+    /// # Examples
+    /// ```
+    /// http://192.168.178.100
+    /// ```
+    pub url: String,
+}
 
 #[derive(Debug)]
 pub struct RequestError {
@@ -138,7 +150,7 @@ impl fmt::Display for ProcessDataValues {
 }
 
 pub struct Client<'a> {
-    cfg: &'a crate::cfg::Inverter,
+    cfg: &'a InverterCfg,
     client_key: Option<hmac::Tag>,
     stored_key: Option<Digest>,
     server_signature: Option<hmac::Tag>,
@@ -146,7 +158,7 @@ pub struct Client<'a> {
 }
 
 impl<'a> Client<'a> {
-    pub fn new(cfg: &'a crate::cfg::Inverter) -> Self {
+    pub fn new(cfg: &'a InverterCfg) -> Self {
         Self {
             cfg,
             client_key: None,
@@ -225,11 +237,12 @@ impl<'a> Client<'a> {
     }
 
     fn verify_server_signature(&mut self, server_final_data: &AuthServerFinal) {
-        let decoded_server_signature = general_purpose::STANDARD.decode(server_final_data.signature.clone())
+        let decoded_server_signature = general_purpose::STANDARD
+            .decode(server_final_data.signature.clone())
             .expect("Server signature must be decoded to verify integrity.");
         assert_eq!(
             decoded_server_signature,
-            &*self.server_signature.unwrap().as_ref()
+            self.server_signature.unwrap().as_ref()
         );
     }
 
@@ -373,16 +386,11 @@ impl<'a> Client<'a> {
         &self,
         module_id: &str,
     ) -> Result<Vec<ProcessDataValues>, RequestError> {
-        let url = format!(
-            "{}{}/{}",
-            self.cfg.url, PROCESS_DATA_EP, module_id);
+        let url = format!("{}{}/{}", self.cfg.url, PROCESS_DATA_EP, module_id);
         self.get::<Vec<ProcessDataValues>>(url).await
     }
 
-    async fn get<T: DeserializeOwned>(
-        &self,
-        url: String,
-    ) -> Result<T, RequestError> {
+    async fn get<T: DeserializeOwned>(&self, url: String) -> Result<T, RequestError> {
         reqwest::Client::new()
             .get(url)
             .header("authorization", format!("Session {}", self.session_id))
