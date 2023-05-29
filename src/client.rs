@@ -390,6 +390,30 @@ impl<'a> Client<'a> {
         self.get::<Vec<ProcessDataValues>>(url).await
     }
 
+    pub fn extend_process_data_value(
+        module_id: &str,
+        values: Vec<ProcessDataValues>,
+    ) -> Vec<ProcessDataValues> {
+        let mut extended_values: Vec<ProcessDataValues> = Vec::new();
+        for value in values {
+            let mut extended_data = Vec::new();
+            for v1 in value.process_data {
+                extended_data.push(ProcessDataValue {
+                    unit: v1.unit,
+                    id: format!("{}:{}", module_id, v1.id),
+                    value: v1.value,
+                })
+            }
+
+            extended_values.push(ProcessDataValues {
+                module_id: value.module_id,
+                process_data: extended_data,
+            })
+        }
+
+        extended_values
+    }
+
     async fn get<T: DeserializeOwned>(&self, url: String) -> Result<T, RequestError> {
         reqwest::Client::new()
             .get(url)
