@@ -42,6 +42,18 @@ async fn rocket() -> _ {
                 .await
                 .unwrap();
             data.extend(dev_local);
+
+            let pv_string1 = "devices:local:pv1";
+            data.extend(client::Client::extend_process_data_value(
+                pv_string1,
+                client.get_process_data_module(pv_string1).await.unwrap(),
+            ));
+
+            let pv_string2 = "devices:local:pv2";
+            data.extend(client::Client::extend_process_data_value(
+                pv_string2,
+                client.get_process_data_module(pv_string2).await.unwrap(),
+            ));
             let _ = app::write_data(&influx_client, &data).await;
 
             sleep(Duration::from_secs(cfg.polling_interval_sec))
