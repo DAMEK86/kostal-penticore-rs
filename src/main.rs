@@ -58,8 +58,7 @@ async fn rocket() -> _ {
 
             sleep(Duration::from_secs(cfg.polling_interval_sec))
         }
-    })
-    .await;
+    });
 
     serve_rest_service()
 }
