@@ -10,3 +10,4 @@ Cargo.lock
 **/*.rs.bk
 
 config/local.toml
+config/local.json

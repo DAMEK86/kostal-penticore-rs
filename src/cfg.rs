@@ -1,6 +1,6 @@
+use crate::plenticore::InverterCfg;
 use config::{Config, ConfigError, Environment, File};
 use serde::Deserialize;
-use crate::client::InverterCfg;
 
 const DEFAULT_CONFIG_FILE_PATH: &str = "config/default.toml";
 const CONFIG_FILE_PREFIX: &str = "config/";
@@ -15,10 +15,16 @@ pub struct InfluxDB {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct Inverters {
+    pub inverter: InverterCfg,
+    pub influx_id: String,
+}
+
+#[derive(Debug, Deserialize)]
 #[allow(unused)]
 pub struct Settings {
     pub influx: InfluxDB,
-    pub inverter: InverterCfg,
+    pub inverters: Vec<Inverters>,
     pub polling_interval_sec: u64,
 }
 
@@ -28,10 +34,8 @@ impl Settings {
         let s = Config::builder()
             .add_source(vec![
                 File::with_name(DEFAULT_CONFIG_FILE_PATH),
-                File::with_name(&format!("{}{}", CONFIG_FILE_PREFIX, run_mode))
-                    .required(false),
-                File::with_name(&format!("{}{}", CONFIG_FILE_PREFIX, "local"))
-                    .required(false),
+                File::with_name(&format!("{}{}", CONFIG_FILE_PREFIX, run_mode)).required(false),
+                File::with_name(&format!("{}{}", CONFIG_FILE_PREFIX, "local")).required(false),
             ])
             .add_source(Environment::with_prefix("app"))
             .build()?;

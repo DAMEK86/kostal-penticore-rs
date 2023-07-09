@@ -149,6 +149,7 @@ impl fmt::Display for ProcessDataValues {
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct Client<'a> {
     cfg: &'a InverterCfg,
     client_key: Option<hmac::Tag>,
