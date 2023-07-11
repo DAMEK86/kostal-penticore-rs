@@ -1,0 +1,28 @@
+{
+  "polling_interval_sec" : 5,
+  "inverters": [
+    {
+      "inverter": {
+        "username" : "user",
+        "password" : "",
+        "url" : "http://your-inverter-ip"
+      },
+      "influx_id" : "pvwr"
+    },
+    {
+      "inverter": {
+        "username" : "user2",
+        "password" : "",
+        "url" : "http://your-inverter-ip"
+      },
+      "influx_id" : "pvwr2"
+    }
+  ],
+  "influx" : {
+    "url" : "http://your-influxdb.com",
+    "port" : 8086,
+    "db" : "influx-db",
+    "user" : "root",
+    "password" : ""
+  }
+}

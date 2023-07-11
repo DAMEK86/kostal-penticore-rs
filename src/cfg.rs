@@ -2,7 +2,7 @@ use crate::plenticore::InverterCfg;
 use config::{Config, ConfigError, Environment, File};
 use serde::Deserialize;
 
-const DEFAULT_CONFIG_FILE_PATH: &str = "config/default.toml";
+const DEFAULT_CONFIG_FILE_PATH: &str = "config/default.json";
 const CONFIG_FILE_PREFIX: &str = "config/";
 
 #[derive(Debug, Deserialize)]
