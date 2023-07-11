@@ -1,10 +1,13 @@
 extern crate core;
 #[macro_use]
 extern crate rocket;
+
 use influx_db_client::client;
 use log::info;
 use rocket::{Build, Rocket};
+use std::ops::Deref;
 use std::process::exit;
+use std::sync::Arc;
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -26,26 +29,37 @@ async fn rocket() -> _ {
         }
     };
 
-    let influx_client = app::get_infux_db_client(&cfg.influx).unwrap();
+    let influx_client: Arc<influx_db_client::Client> =
+        Arc::new(app::get_infux_db_client(&cfg.influx).unwrap());
 
-    let _ = tokio::spawn(async move {
-        let mut client = plenticore::Client::new(&cfg.inverters[0].inverter);
-        let server_final_data = client.get_server_trust().await.unwrap();
-        info!("{:?}", server_final_data);
-        client.set_session_id(&server_final_data);
-        loop {
-            collect_and_upload(&influx_client, client, &cfg.inverters[0].influx_id).await;
-
-            sleep(Duration::from_secs(cfg.polling_interval_sec))
-        }
-    });
+    for inverter_cfg in cfg.inverters {
+        let db_client = Arc::clone(&influx_client);
+        tokio::spawn(async move {
+            init_and_run(db_client, cfg.polling_interval_sec, &inverter_cfg).await;
+        });
+    }
 
     serve_rest_service()
 }
 
+async fn init_and_run(
+    influx_client: Arc<influx_db_client::Client>,
+    polling_interval_sec: u64,
+    inverter_cfg: &cfg::Inverter,
+) {
+    let mut client = plenticore::Client::new(&inverter_cfg.inverter);
+    let server_final_data = client.get_server_trust().await.unwrap();
+    info!("session established to inverter {}", inverter_cfg.influx_id);
+    client.set_session_id(&server_final_data);
+    loop {
+        collect_and_upload(influx_client.deref(), &client, &inverter_cfg.influx_id).await;
+        sleep(Duration::from_secs(polling_interval_sec))
+    }
+}
+
 async fn collect_and_upload(
     influx_client: &client::Client,
-    plenticore: plenticore::Client<'_>,
+    plenticore: &plenticore::Client<'_>,
     influx_id: &str,
 ) {
     let mut data = plenticore

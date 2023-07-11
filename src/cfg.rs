@@ -15,7 +15,7 @@ pub struct InfluxDB {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Inverters {
+pub struct Inverter {
     pub inverter: InverterCfg,
     pub influx_id: String,
 }
@@ -24,7 +24,7 @@ pub struct Inverters {
 #[allow(unused)]
 pub struct Settings {
     pub influx: InfluxDB,
-    pub inverters: Vec<Inverters>,
+    pub inverters: Vec<Inverter>,
     pub polling_interval_sec: u64,
 }
 

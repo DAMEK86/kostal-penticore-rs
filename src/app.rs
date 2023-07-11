@@ -30,7 +30,7 @@ pub async fn write_data_with_point_name(
             .write_point(point, Some(Precision::Seconds), None)
             .await?;
     }
-    info!("fields written: {}", field_count);
+    info!("{field_count} fields written to point {influx_id}");
     Ok(())
 }
 
