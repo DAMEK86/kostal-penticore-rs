@@ -1,6 +1,6 @@
 ################
 ##### Builder
-FROM rust:1.69-bookworm as builder
+FROM rust:1.83-bookworm as builder
 
 WORKDIR /app
 

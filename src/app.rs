@@ -2,7 +2,7 @@ use crate::plenticore::ProcessDataValues;
 use influx_db_client::{point, Client, Point, Precision};
 use log::info;
 
-pub fn get_infux_db_client(
+pub fn get_influx_db_client(
     cfg: &crate::cfg::InfluxDB,
 ) -> Result<Client, Box<dyn std::error::Error>> {
     let client = Client::new(
@@ -32,12 +32,4 @@ pub async fn write_data_with_point_name(
     }
     info!("{field_count} fields written to point {influx_id}");
     Ok(())
-}
-
-#[deprecated(since = "0.2.0", note = "use `write_data_with_point_name` instead")]
-pub async fn write_data(
-    client: &Client,
-    process_values: &[ProcessDataValues],
-) -> Result<(), Box<dyn std::error::Error>> {
-    write_data_with_point_name(client, "pvwr", process_values).await
 }

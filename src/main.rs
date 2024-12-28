@@ -30,7 +30,7 @@ async fn rocket() -> _ {
     };
 
     let influx_client: Arc<influx_db_client::Client> =
-        Arc::new(app::get_infux_db_client(&cfg.influx).unwrap());
+        Arc::new(app::get_influx_db_client(&cfg.influx).unwrap());
 
     for inverter_cfg in cfg.inverters {
         let db_client = Arc::clone(&influx_client);
@@ -52,7 +52,7 @@ async fn init_and_run(
     info!("session established to inverter {}", inverter_cfg.influx_id);
     client.set_session_id(&server_final_data);
     loop {
-        collect_and_upload(influx_client.deref(), &client, &inverter_cfg.influx_id).await;
+        collect_and_upload(influx_client.deref(), &client, &inverter_cfg).await;
         sleep(Duration::from_secs(polling_interval_sec))
     }
 }
@@ -60,7 +60,7 @@ async fn init_and_run(
 async fn collect_and_upload(
     influx_client: &client::Client,
     plenticore: &plenticore::Client<'_>,
-    influx_id: &str,
+    inverter_cfg: &cfg::Inverter,
 ) {
     let mut data = plenticore
         .get_process_data_module("scb:statistic:EnergyFlow")
@@ -72,24 +72,17 @@ async fn collect_and_upload(
         .unwrap();
     data.extend(dev_local);
 
-    let pv_string1 = "devices:local:pv1";
-    data.extend(plenticore::Client::extend_process_data_value(
-        pv_string1,
-        plenticore
-            .get_process_data_module(pv_string1)
-            .await
-            .unwrap(),
-    ));
-
-    let pv_string2 = "devices:local:pv2";
-    data.extend(plenticore::Client::extend_process_data_value(
-        pv_string2,
-        plenticore
-            .get_process_data_module(pv_string2)
-            .await
-            .unwrap(),
-    ));
-    let _ = app::write_data_with_point_name(influx_client, influx_id, &data).await;
+    for string in inverter_cfg.strings.iter() {
+        let pv_string = format!("devices:local:pv{}", string);
+        data.extend(plenticore::Client::extend_process_data_value(
+            pv_string.as_str(),
+            plenticore
+                .get_process_data_module(pv_string.as_str())
+                .await
+                .unwrap(),
+        ));
+    }
+    let _ = app::write_data_with_point_name(influx_client, &inverter_cfg.influx_id, &data).await;
 }
 
 fn serve_rest_service() -> Rocket<Build> {

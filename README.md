@@ -2,7 +2,7 @@
 
 ## config
 
-config is based on awsome [config-rs crate](https://github.com/mehcode/config-rs).
+config is based on awesome [config-rs crate](https://github.com/mehcode/config-rs).
 
 for local development: create `config/local.{toml,json,..}` and override values  
 config is able to work with different run modes, e.g. Prod by setting `RUN_MODE` environment variable

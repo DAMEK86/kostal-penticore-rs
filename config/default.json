@@ -7,7 +7,11 @@
         "password" : "",
         "url" : "http://your-inverter-ip"
       },
-      "influx_id" : "pvwr"
+      "influx_id" : "pvwr",
+      "strings": [
+        1,
+        2
+      ]
     },
     {
       "inverter": {
@@ -15,7 +19,12 @@
         "password" : "",
         "url" : "http://your-inverter-ip"
       },
-      "influx_id" : "pvwr2"
+      "influx_id" : "pvwr2",
+      "strings": [
+        1,
+        2,
+        3
+      ]
     }
   ],
   "influx" : {

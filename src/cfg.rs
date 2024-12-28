@@ -18,6 +18,7 @@ pub struct InfluxDB {
 pub struct Inverter {
     pub inverter: InverterCfg,
     pub influx_id: String,
+    pub strings: Vec<u8>,
 }
 
 #[derive(Debug, Deserialize)]
