@@ -1,46 +1,80 @@
-# AGENTS.md
+# kostal-plenticore-rs
 
-## Cursor Cloud specific instructions
+This is a single Rust binary that authenticates to one or more Kostal Plenticore
+inverters, polls process data, and writes time-series points to InfluxDB. It
+also serves `GET /health` so a process that cannot reach an inverter is still
+probeable.
 
-This repo is a single Rust binary: `kostal-plenticore-rs`, an exporter that polls Kostal
-Plenticore solar inverters and writes metrics to InfluxDB, while serving a minimal Rocket
-`GET /health` endpoint.
+The goal is a small, obvious exporter: config in, metrics out. There is no
+dashboard, no extra in-repo service, and no glue layer. Operators run this next
+to real hardware; agents working here should keep that shape.
 
-### Toolchain caveat (important)
+## Current status
 
-`Cargo.lock` is gitignored (see `.gitignore`), so dependencies always resolve to the latest
-compatible versions. Some transitive crates now require Rust edition 2024 (Rust >= 1.88). The
-base image ships Rust 1.83, which is too old and fails with `feature edition2024 is required`.
-The startup update script installs the latest `stable` toolchain and sets it as the rustup
-default, so a plain `cargo build`/`cargo run` works. If you ever see an `edition2024` error,
-run `rustup default stable` (or `rustup toolchain install stable`).
+The capsule already exists: Plenticore SCRAM-like auth, process-data polling,
+InfluxDB writes, Rocket health, Docker image, and a CI build/test/publish
+pipeline. What does not exist in this repository is the rest of a monitoring
+stack (InfluxDB, Grafana) or a fake inverter. Those are external.
 
-### Standard commands
+`Cargo.lock` is gitignored on purpose. Builds resolve to whatever the latest
+compatible crates are. That is a fact of this repo, not an accident to "fix"
+by committing a lockfile unless we explicitly decide to.
 
-- Build (dev): `cargo build`
-- Lint: `cargo clippy` (a couple of pre-existing warnings are expected)
-- Format check: `cargo fmt --check`
-- Test: `cargo test` (single in-process test hitting the Rocket `/health` route)
-- Run (dev): `cargo run`
+## Who this document is talking to
 
-Rocket binds to port 8000 by default. The Dockerfile runs it on 8080 via env vars; to match
-that locally use `ROCKET_PORT=8080 ROCKET_ADDRESS=0.0.0.0 cargo run`. Set `RUST_LOG=info` for
-request/startup logs.
+- *you* — the agent reading this and changing this repository.
+- *we* / *us* — humans contributing to this exporter.
+- *operators* — people who run the binary against real inverters and InfluxDB.
+  They are the users. They are not you.
 
-### Configuration and running end-to-end
+## How to think while working here
 
-Config uses [config-rs]: `config/default.json` is the baseline; override it with
-`config/local.{toml,json,...}` (gitignored), a `RUN_MODE`-named file, or `APP_`-prefixed env
-vars. The default config contains placeholder inverter/InfluxDB values.
+### Keep the binary boring
 
-Full data-export E2E requires real Kostal Plenticore inverter hardware plus an InfluxDB
-instance, neither of which is available in the cloud environment. With placeholder inverter
-config, the per-inverter background poll tasks fail authentication:
-- In the dev profile a failing task panics but only kills that task, so the `/health` server
-  keeps running.
-- In the release profile `panic = 'abort'` would terminate the whole process.
+This project is an exporter, not a platform. When a change wants a new
+service, a UI, or a second binary, push back. The obvious shape is still:
+read config, poll inverters, write Influx, answer `/health`.
 
-For a clean local run without hardware, create `config/local.toml` with an empty inverter list
-(`inverters = []`); the health server then starts with no background tasks. The exporter's only
-externally observable runtime action without hardware is the `GET /health` endpoint returning
-`200 OK`.
+### Design for operators who already have hardware
+
+Auth, polling, and writes assume a real Plenticore REST API and a real
+InfluxDB. Do not invent a bundled mock stack "so the repo is self-contained"
+unless we ask for that. Absence of hardware is an environment constraint, not
+a product gap.
+
+### Make the operator-default true
+
+Config already has a default file, optional `RUN_MODE` files, gitignored
+`config/local.*`, and `APP_` environment overrides. Prefer those over new
+config channels. If an operator would assume "put secrets in `config/local.toml`",
+that should keep working.
+
+### Don't hide process death
+
+Background poll tasks `unwrap` auth and I/O. In the release profile,
+`panic = 'abort'` kills the whole process. That is the current contract.
+Do not paper over it with silent retries unless we decide the contract
+should change.
+
+### Fight for the obvious solution
+
+Avoid clever indirection. An agent (or operator) should be able to guess
+where auth lives (`src/plenticore.rs`), where Influx writes live
+(`src/app.rs`), and where config is loaded (`src/cfg.rs`) without a tour.
+
+## Rules
+
+These steer. They are not laws. If you need to break one, say so loudly
+before doing it.
+
+- preserve the single-binary exporter; do not grow a service mesh
+- treat inverter + InfluxDB as external; this repo does not vendor them
+- keep `config/local.*` gitignored; never commit operator secrets
+- leave `Cargo.lock` uncommitted unless we explicitly change that policy
+- require a current stable Rust toolchain; the Dockerfile's `1.83` pin is
+  a publish image, not a guarantee that latest crates still compile on 1.83
+- an empty `inverters` list is a valid way to run only the health server
+- `/health` staying up while a poll task dies is a *dev-profile* accident
+  of task isolation, not a release guarantee
+- commands, toolchain install, and local run recipes live in
+  `CONTRIBUTING.md` — do not duplicate them here
