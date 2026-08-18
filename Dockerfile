@@ -1,6 +1,6 @@
 ################
 ##### Builder
-FROM rust:1.83-bookworm as builder
+FROM rust:1.97-bookworm as builder
 
 WORKDIR /app
 
@@ -20,6 +20,7 @@ FROM debian:bookworm-slim AS runtime
 ARG UID=1001
 ARG USER=app
 ARG GID=1001
+ARG GROUP=app
 ENV WORKINGDIR /app
 
 EXPOSE 8080
