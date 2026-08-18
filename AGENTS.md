@@ -71,8 +71,8 @@ before doing it.
 - treat inverter + InfluxDB as external; this repo does not vendor them
 - keep `config/local.*` gitignored; never commit operator secrets
 - leave `Cargo.lock` uncommitted unless we explicitly change that policy
-- require a current stable Rust toolchain; the Dockerfile's `1.83` pin is
-  a publish image, not a guarantee that latest crates still compile on 1.83
+- require a current stable Rust toolchain (`rust-toolchain.toml` + `rust:bookworm`
+  in the Docker builder). Do not pin the image back to 1.83.
 - an empty `inverters` list is a valid way to run only the health server
 - `/health` staying up while a poll task dies is a *dev-profile* accident
   of task isolation, not a release guarantee

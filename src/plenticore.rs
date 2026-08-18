@@ -1,5 +1,3 @@
-extern crate rand;
-
 use std::num::NonZeroU32;
 use std::{error, fmt};
 
@@ -114,20 +112,6 @@ pub struct ProcessDataValue {
     pub unit: String,
     pub id: String,
     pub value: f32,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ProcessDataIds {
-    #[serde(rename = "moduleid")]
-    module_id: String,
-    #[serde(rename = "processdataids")]
-    process_data_ids: Vec<String>,
-}
-
-impl fmt::Display for ProcessDataIds {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({}, {:?})", self.module_id, self.process_data_ids)
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -421,13 +405,13 @@ impl<'a> Client<'a> {
             .send()
             .await
             .map_err(|e| {
-                error!("Failed to request endpoint: {}", e.to_string());
+                log::error!("Failed to request endpoint: {}", e);
                 RequestError::new(e.to_string())
             })?
             .json::<T>()
             .await
             .map_err(|e| {
-                error!("Failed to parse response: {}", e.to_string());
+                log::error!("Failed to parse response: {}", e);
                 RequestError::new(e.to_string())
             })
     }

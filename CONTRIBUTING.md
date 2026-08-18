@@ -2,10 +2,10 @@
 
 ## Toolchain
 
-Use a current **stable** Rust (`rustup default stable`). The Docker builder
-image is still `rust:1.83-bookworm`. That is too old for current transitive
-crates: `Cargo.lock` is gitignored, so `cargo build` resolves latest
-versions, some of which need edition 2024 (Rust >= 1.88). On 1.83 you get
+Use a current **stable** Rust. `rust-toolchain.toml` pins `stable` with clippy
+and rustfmt. The Docker builder is `rust:bookworm` (same channel). `Cargo.lock`
+is gitignored, so `cargo build` resolves latest crates — some need edition
+2024 (Rust >= 1.88). An older toolchain fails with
 `feature edition2024 is required`.
 
 ```bash
