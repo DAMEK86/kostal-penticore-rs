@@ -1,16 +1,21 @@
+extern crate core;
+#[macro_use]
+extern crate rocket;
+
 use influx_db_client::client;
-use log::{error, info};
-use rocket::{get, launch, routes, Build, Rocket};
+use log::info;
+use rocket::{Build, Rocket};
 use std::ops::Deref;
 use std::process::exit;
 use std::sync::Arc;
+use std::thread::sleep;
 use std::time::Duration;
 
 mod app;
 mod cfg;
 mod plenticore;
 
-#[get("/health")]
+#[rocket::get("/health")]
 fn health() {}
 
 #[launch]
@@ -47,8 +52,8 @@ async fn init_and_run(
     info!("session established to inverter {}", inverter_cfg.influx_id);
     client.set_session_id(&server_final_data);
     loop {
-        collect_and_upload(influx_client.deref(), &client, inverter_cfg).await;
-        tokio::time::sleep(Duration::from_secs(polling_interval_sec)).await;
+        collect_and_upload(influx_client.deref(), &client, &inverter_cfg).await;
+        sleep(Duration::from_secs(polling_interval_sec))
     }
 }
 
